@@ -1,0 +1,30 @@
+meter_digit_det:
+  weights: weights/det_meter_digit.pt
+  params: 
+    conf_thres: 0.6
+    iou_thres: 0.2
+    verbose: False
+
+scale_seg:
+  weights: weights/seg_scale_with_green.pt
+  params: 
+    conf_thres: 0.45
+    iou_thres: 0.2
+    verbose: False
+
+scale_kpt:
+  weights: weights/pose_scale_digit_v1.pt
+  params: 
+    conf_thres: 0.25
+    iou_thres: 0.25
+    verbose: False
+
+pointer_kpt:
+  weights: weights/pose_pointer.pt
+  params: 
+    conf_thres: 0.25
+    iou_thres: 0.25
+    verbose: False
+
+ocr_model:
+  weights: weights/parseq-bb5792a6.pt
