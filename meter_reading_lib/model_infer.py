@@ -121,6 +121,22 @@ def ocr_model_infer(model, img, device, conf_thres=0.6):
 
     return label
     
+from paddleocr import PaddleOCR
+def load_ppocr_model(**kwargs):
+    model = PaddleOCR(lang="en", det=False, use_angle_cls=True, **kwargs)
+    return model
+
+
+def ppocr_infer(model: PaddleOCR, img: np.ndarray):
+    res = model.ocr(img, det=False)[0][0][0]
+    try:
+        if res in ["-0+", "+0-", "-0", "+0", "0-", "0+"]:
+            res = 0
+        else:
+            res = float(res)
+    except:
+        res = None
+    return res
 
 
 if __name__ == '__main__':

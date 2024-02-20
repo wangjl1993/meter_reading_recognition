@@ -23,7 +23,7 @@ class DetOut:
     def __post_init__(self):
         self.xyxy = self.xyxy.astype(np.int16)
         self.xywh = self.xywh.astype(np.int16)
-        self.center = self.xyxy[:2]
+        self.center = self.xywh[:2]
 
 
 
@@ -224,6 +224,7 @@ class Result:
         msg = ""
         if len(self.meters) == 0:
             msg += "No meter found.\n"
+            reading = []
         else:
             reading = []
             for meter in self.meters:

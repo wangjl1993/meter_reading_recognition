@@ -2,7 +2,7 @@
 import numpy as np
 from meter_reading_lib.model_infer import (
     yolov8_det_infer, yolov8_seg_infer,
-    yolov8_pose_infer, ocr_model_infer
+    yolov8_pose_infer, ppocr_infer
 )
 from meter_reading_lib.myutils import (
     crop_img,
@@ -18,7 +18,7 @@ from meter_reading_lib.dataStruct import (
 )
 
 from typing import List
-
+from paddleocr import PaddleOCR
 
 def is_pointer_degree_abnormal(degree, degree_ranges, thres=10):
     """指针读数异常：指针角度在刻度表角度范围外；指针角度在刻度表的起止位置。"""
@@ -86,8 +86,8 @@ def compute_non_counter_meter_reading(pointer: Pointer, digits: List[Digit]):
 
 
 def non_counter_meter_reading_recognition(
-        meter: Meter, img: np.ndarray, ocr_model: nn.Module, 
-        device: torch.device, thres: float=15
+        meter: Meter, img: np.ndarray, 
+        ocr_model: PaddleOCR, thres: float=15
     ):
     if len(meter.pointers) == 0:
         meter.msg += "No pointer found.\n"
@@ -98,7 +98,7 @@ def non_counter_meter_reading_recognition(
     
     for digit in meter.digits:
         digit_img = crop_img(img, digit.pose_out.xyxy)
-        ocr_pre = ocr_model_infer(ocr_model, digit_img, device)
+        ocr_pre = ppocr_infer(ocr_model, digit_img)
         digit.ocr_out = ocr_pre
     
     green_scales = [s for s in meter.scales if s.seg_out.label == "green_scale"]
@@ -145,7 +145,7 @@ def non_counter_meter_reading_recognition(
 
 
 
-def counter_meter_reading_recognition(meter: Meter, img: np.ndarray, ocr_model: nn.Module, device: torch.device):
+def counter_meter_reading_recognition(meter: Meter, img: np.ndarray, ocr_model: PaddleOCR):
     if len(meter.pointers) == 0:
         meter.is_abnormal = True
         meter.msg += "No pointer found.\n"
@@ -164,7 +164,7 @@ def counter_meter_reading_recognition(meter: Meter, img: np.ndarray, ocr_model: 
                 pointer.is_abnormal = False
 
                 digit_img = crop_img(img, digit.pose_out.xyxy)
-                ocr_pre = ocr_model_infer(ocr_model, digit_img, device)
+                ocr_pre = ppocr_infer(ocr_model, digit_img)
                 if ocr_pre is not None:
                     digit.ocr_out = ocr_pre
                     pointer.reading = int(ocr_pre)
@@ -180,7 +180,7 @@ def counter_meter_reading_recognition(meter: Meter, img: np.ndarray, ocr_model: 
                 pointer.is_abnormal = False
 
                 digit_img = crop_img(img, digit.pose_out.xyxy)
-                ocr_pre = ocr_model_infer(ocr_model, digit_img, device)
+                ocr_pre = ppocr_infer(ocr_model, digit_img)
                 if ocr_pre is not None:
                     digit.ocr_out = ocr_pre
                     pointer.reading = (int(ocr_pre)+5)%10
@@ -194,13 +194,13 @@ def counter_meter_reading_recognition(meter: Meter, img: np.ndarray, ocr_model: 
 
 
 
-def process_meter(meters: List[Meter], img: np.ndarray, ocr_model: nn.Module, device: torch.device, thres:float=15):
+def process_meter(meters: List[Meter], img: np.ndarray, ocr_model: nn.Module, thres:float=15):
     for i, meter in enumerate(meters):
         meter.msg += f"Process meter{i}, meter_type={meter.meter_type}.\n"
         if meter.meter_type == "counter_meter":
-            counter_meter_reading_recognition(meter, img, ocr_model, device)
+            counter_meter_reading_recognition(meter, img, ocr_model)
         else:
-            non_counter_meter_reading_recognition(meter, img, ocr_model, device, thres)
+            non_counter_meter_reading_recognition(meter, img, ocr_model, thres)
         
         meter.collect_info()
 
@@ -235,7 +235,7 @@ def meter_reading_recognition(
     # 未检测到表
     if meter_num == 0:
         res = Result(img)
-        return res
+        return res.get_info()
 
     # 图中有1个表
     elif meter_num == 1:
@@ -276,9 +276,9 @@ def meter_reading_recognition(
                     meters[idx].digits.append(d)
 
 
-    process_meter(meters, img, ocr_model, device)
+    process_meter(meters, img, ocr_model)
     res = Result(img, meters)
-    return res
+    return res.get_info()
 
 
 
